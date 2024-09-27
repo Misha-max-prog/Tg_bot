@@ -17,10 +17,17 @@
     <dependencies>
 
         <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.2.11</version> <!-- Можете указать актуальную версию -->
+        </dependency>
+
+        <dependency>
             <groupId>org.telegram</groupId>
             <artifactId>telegrambots</artifactId>
             <version>${telegram.version}</version>
         </dependency>
+
 
 
         <dependency>
