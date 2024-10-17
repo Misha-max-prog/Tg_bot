@@ -39,26 +39,74 @@ public class Bot extends TelegramLongPollingBot {
         // Проверяем, какая кнопка нажата или сообщение отправлено
         switch (msg.getText()) {
             case "/start":
-                sendWelcomeMessage(id);
+                sendWelcomeMessage(id, 1);
                 break;
-            case "Тык":
-                sendText(id, "Не тыкай тут");
+            case "План питания":
+                sendText(id, "Выстраивание гибкого и здорового рациона в соответсвии с твоими задачами. И вкусное, и полезное по заветаи гибкой диеты.");
+                sendMessageWithKeyboard(id, 2);
                 break;
-            case "Copy Message":
-                sendText(id, "Это фиксированное сообщение вместо копирования!");
+            case "Тренировки":
+                sendText(id, "Грамотная программа упражнений с описанием техники их выполнения и видеоинструкций. Обсудим твои спортивные задачи и придём к согласию по программе тренировок и количеству занятий.");
+                sendMessageWithKeyboard(id, 3);
+                break;
+            case "Инвентарь для питания":
+                sendText(id, "Кухонные весы, напольные весы, метровая лента, шагомер, счетчик калорий FatSecret.");
+                break;
+            case "Задачи":
+                sendText(id, "Необходимо взвешивать себя каждый день. Взвешивать еду и фиксировать её в приложении, считать шаги, отправлять Маше отчеты.");
+                break;
+            case "Инвентарь для тренировок":
+                sendText(id, "Телефон, чтобы снимать себя на видео, абонемент в любой тренажерный зал.");
+                break;
+            case "Созвон":
+                sendText(id, "Подробно обсудим все твои вопросы в формате видеозвонка в удобное для тебя время за деньги.");
+                break;
+            case "Танцы":
+                sendText(id, "Персональные и групповые занятия пока только очно.");
+                break;
+            case "Назад":
+                sendWelcomeMessage(id, 4);
                 break;
             default:
                 sendText(id, "Вы сказали: "+msg.getText()+". Однако сейчас я не могу вам ответить, ждите апдейтов :)");
                 break;
         }
     }
-
     // Метод для отправки приветственного сообщения с клавиатурой
-    public void sendWelcomeMessage(Long chatId) {
+    public void sendMessageWithKeyboard(Long chatId, int key) {
         SendMessage sm = SendMessage.builder()
                 .chatId(chatId.toString())
-                .text("Добро пожаловать! Выберите действие:")
-                .replyMarkup(createKeyboard()) // Добавляем клавиатуру к сообщению
+                .text(sendMessage(key))
+                .replyMarkup(createKeyboard(key)) // Добавляем клавиатуру к сообщению
+                .build();
+        try {
+            execute(sm);
+        } catch (TelegramApiException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    public String sendMessage(int value){
+        String AskMessage = (String) "Вопросы по работе?";
+        String HelloMessage = (String) "Привет, я бот Марии Кицы Плюшки рассказываю как начать взаимодействие и отвечаю на основные вопросы.";
+        String BackMessage = (String) "Хорошо, вернёмся.";
+        if (value==1){
+            return HelloMessage;
+        }
+        if (value==2 || value==3){
+            return AskMessage;
+        }
+        if (value==4){
+            return BackMessage;
+        }
+        return "";
+    }
+
+    // Метод для отправки приветственного сообщения с клавиатурой
+    public void sendWelcomeMessage(Long chatId, int val) {
+        SendMessage sm = SendMessage.builder()
+                .chatId(chatId.toString())
+                .text(sendMessage(val))
+                .replyMarkup(createKeyboard(1)) // Добавляем клавиатуру к сообщению
                 .build();
         try {
             execute(sm);
@@ -68,19 +116,39 @@ public class Bot extends TelegramLongPollingBot {
     }
 
     // Создаем клавиатуру
-    private ReplyKeyboardMarkup createKeyboard() {
+    private ReplyKeyboardMarkup createKeyboard(int value) {
         ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
         keyboardMarkup.setResizeKeyboard(true); // Клавиатура будет подстраиваться под размер экрана
 
         List<KeyboardRow> keyboardRows = new ArrayList<>();
-
-        // Первый ряд кнопок
         KeyboardRow row1 = new KeyboardRow();
-        row1.add(new KeyboardButton("Тык"));
-        row1.add(new KeyboardButton("Copy Message"));
-
-        // Добавляем ряды в список
-        keyboardRows.add(row1);
+        KeyboardRow row2 = new KeyboardRow();
+        // Первый ряд кнопок
+        if (value==1) { //после приветствия
+            row1.add(new KeyboardButton("План питания"));
+            row1.add(new KeyboardButton("Тренировки"));
+            // Добавляем ряды в список
+            keyboardRows.add(row1);
+        }
+        if (value==2) { //после питания
+            row1.add(new KeyboardButton("Инвентарь для питания"));
+            row1.add(new KeyboardButton("Задачи"));
+            row2.add(new KeyboardButton("Назад"));
+            //Тут нужна кнопка назад!!!!!
+            // Добавляем ряды в список
+            keyboardRows.add(row1);
+            keyboardRows.add(row2);
+        }
+        if (value==3) { //после трень
+            row1.add(new KeyboardButton("Инвентарь для тренировок"));
+            row1.add(new KeyboardButton("Созвон"));
+            row2.add(new KeyboardButton("Танцы"));
+            row2.add(new KeyboardButton("Назад"));
+            //Тут нужна кнопка назад!!!!!
+            // Добавляем ряды в список
+            keyboardRows.add(row1);
+            keyboardRows.add(row2);
+        }
 
         // Устанавливаем клавиатуру
         keyboardMarkup.setKeyboard(keyboardRows);
@@ -99,20 +167,6 @@ public class Bot extends TelegramLongPollingBot {
             throw new RuntimeException(e);
         }
     }
-    /*
-    public void copyMessage(Long who, Integer msgId) {
-        CopyMessage cm = CopyMessage.builder()
-                .fromChatId(who.toString())
-                .chatId(who.toString())
-                .messageId(msgId)
-                .build();
-        try {
-            execute(cm);
-        } catch (TelegramApiException e) {
-            throw new RuntimeException(e);
-        }
-    }
-    */
     public static void main(String[] args) throws TelegramApiException {
         TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
         Bot bot = new Bot();
