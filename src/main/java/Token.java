@@ -3,8 +3,9 @@ import java.util.Scanner;
 
 public class Token {
     public static String ReadToken() {
+        File tokenFile = new File("token.txt");
         try {
-            Scanner scanner = new Scanner(new File("C:/Users/darki/IdeaProjects/Tg_bot/token.txt"));
+            Scanner scanner = new Scanner(tokenFile);
             String name = scanner.nextLine();
             scanner.close();
             return name;

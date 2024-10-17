@@ -10,9 +10,13 @@ import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 
 public class Bot extends TelegramLongPollingBot {
+
+    private  Map<Long, Integer> userState = new HashMap<>();
 
     @Override
     public String getBotUsername() {
@@ -26,6 +30,7 @@ public class Bot extends TelegramLongPollingBot {
 
     @Override
     public void onUpdateReceived(Update update) {
+
         var msg = update.getMessage();
         if (msg == null || !msg.hasText()) {
             return;
@@ -36,39 +41,73 @@ public class Bot extends TelegramLongPollingBot {
 
         System.out.println(user.getFirstName() + " wrote " + msg.getText());
 
-        // Проверяем, какая кнопка нажата или сообщение отправлено
+        int currentState = userState.getOrDefault(id, 0);
+
         switch (msg.getText()) {
             case "/start":
-                sendWelcomeMessage(id, 1);
+                if (currentState == 0) {
+                    sendWelcomeMessage(id, 1);
+                    userState.put(id, 1);
+                }
+                else sendInvalidCommandMessage(id);
                 break;
             case "План питания":
-                sendText(id, "Выстраивание гибкого и здорового рациона в соответсвии с твоими задачами. И вкусное, и полезное по заветаи гибкой диеты.");
-                sendMessageWithKeyboard(id, 2);
+                if (currentState == 1) {
+                    sendText(id, "Выстраивание гибкого и здорового рациона в соответсвии с твоими задачами. И вкусное, и полезное по заветаи гибкой диеты.");
+                    sendMessageWithKeyboard(id, 2);
+                    userState.put(id, 2);
+                }
+                else sendInvalidCommandMessage(id);
                 break;
             case "Тренировки":
-                sendText(id, "Грамотная программа упражнений с описанием техники их выполнения и видеоинструкций. Обсудим твои спортивные задачи и придём к согласию по программе тренировок и количеству занятий.");
-                sendMessageWithKeyboard(id, 3);
+                if (currentState == 1) {
+                    sendText(id, "Грамотная программа упражнений с описанием техники их выполнения и видеоинструкций. Обсудим твои спортивные задачи и придём к согласию по программе тренировок и количеству занятий.");
+                    sendMessageWithKeyboard(id, 3);
+                    userState.put(id, 3);
+                }
+                else sendInvalidCommandMessage(id);
+
                 break;
             case "Инвентарь для питания":
-                sendText(id, "Кухонные весы, напольные весы, метровая лента, шагомер, счетчик калорий FatSecret.");
+                if (currentState == 2) {
+                    sendText(id, "Кухонные весы, напольные весы, метровая лента, шагомер, счетчик калорий FatSecret.");
+                }
+                else sendInvalidCommandMessage(id);
                 break;
             case "Задачи":
-                sendText(id, "Необходимо взвешивать себя каждый день. Взвешивать еду и фиксировать её в приложении, считать шаги, отправлять Маше отчеты.");
+                if (currentState == 2) {
+                    sendText(id, "Необходимо взвешивать себя каждый день. Взвешивать еду и фиксировать её в приложении, считать шаги, отправлять Маше отчеты.");
+                }
+                else sendInvalidCommandMessage(id);
                 break;
             case "Инвентарь для тренировок":
-                sendText(id, "Телефон, чтобы снимать себя на видео, абонемент в любой тренажерный зал.");
+                if (currentState == 3) {
+                    sendText(id, "Телефон, чтобы снимать себя на видео, абонемент в любой тренажерный зал.");
+                }
+                else sendInvalidCommandMessage(id);
                 break;
             case "Созвон":
-                sendText(id, "Подробно обсудим все твои вопросы в формате видеозвонка в удобное для тебя время за деньги.");
+                if (currentState == 3) {
+                    sendText(id, "Подробно обсудим все твои вопросы в формате видеозвонка в удобное для тебя время за деньги.");
+                }
+                else sendInvalidCommandMessage(id);
                 break;
             case "Танцы":
-                sendText(id, "Персональные и групповые занятия пока только очно.");
+                if (currentState == 3) {
+                    sendText(id, "Персональные и групповые занятия пока только очно.");
+                }
+                else sendInvalidCommandMessage(id);
                 break;
             case "Назад":
-                sendWelcomeMessage(id, 4);
+                if (currentState == 2 || currentState == 3) {
+                    sendMessageWithKeyboard(id, 4);
+                    sendWelcomeMessage(id, 1);
+                    userState.put(id, 1);
+                }
+                else sendInvalidCommandMessage(id);
                 break;
             default:
-                sendText(id, "Вы сказали: "+msg.getText()+". Однако сейчас я не могу вам ответить, ждите апдейтов :)");
+                sendInvalidCommandMessage(id);
                 break;
         }
     }
@@ -154,6 +193,10 @@ public class Bot extends TelegramLongPollingBot {
         keyboardMarkup.setKeyboard(keyboardRows);
 
         return keyboardMarkup;
+    }
+
+    private void sendInvalidCommandMessage(Long chatId) {
+        sendText(chatId, "Не могу вам помочь, пожалуйста, выберите сообщение с клавиатуры.");
     }
 
     public void sendText(Long who, String what) {
