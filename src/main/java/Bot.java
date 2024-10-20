@@ -16,7 +16,7 @@ import java.util.List;
 
 public class Bot extends TelegramLongPollingBot {
 
-    private  Map<Long, Integer> userState = new HashMap<>();
+    private  Map<Long, UserState> userState = new HashMap<>();
 
     @Override
     public String getBotUsername() {
@@ -41,68 +41,70 @@ public class Bot extends TelegramLongPollingBot {
 
         System.out.println(user.getFirstName() + " wrote " + msg.getText());
 
-        int currentState = userState.getOrDefault(id, 0);
-
+        UserState currentState = userState.getOrDefault(id, UserState.NO_USER);
+        // создавать пакеты
+        // объединить ифами кейсы
+        // для sendWelcomeMessage(id, ...); сделать enum тоже
+        // по хорошему объединить sendWelcomeMessage и sendMessageWithKeyboard
         switch (msg.getText()) {
             case "/start":
-                if (currentState == 0) {
+                if (currentState == UserState.NO_USER) {
                     sendWelcomeMessage(id, 1);
-                    userState.put(id, 1);
+                    userState.put(id, UserState.NEW_USER);
                 }
                 else sendInvalidCommandMessage(id);
                 break;
             case "План питания":
-                if (currentState == 1) {
+                if (currentState == UserState.NEW_USER) {
                     sendText(id, "Выстраивание гибкого и здорового рациона в соответсвии с твоими задачами. И вкусное, и полезное по заветаи гибкой диеты.");
                     sendMessageWithKeyboard(id, 2);
-                    userState.put(id, 2);
+                    userState.put(id, UserState.FOOD_PLANE);
                 }
                 else sendInvalidCommandMessage(id);
                 break;
             case "Тренировки":
-                if (currentState == 1) {
+                if (currentState == UserState.NEW_USER) {
                     sendText(id, "Грамотная программа упражнений с описанием техники их выполнения и видеоинструкций. Обсудим твои спортивные задачи и придём к согласию по программе тренировок и количеству занятий.");
                     sendMessageWithKeyboard(id, 3);
-                    userState.put(id, 3);
+                    userState.put(id, UserState.TRAINING);
                 }
                 else sendInvalidCommandMessage(id);
 
                 break;
             case "Инвентарь для питания":
-                if (currentState == 2) {
+                if (currentState == UserState.FOOD_PLANE) {
                     sendText(id, "Кухонные весы, напольные весы, метровая лента, шагомер, счетчик калорий FatSecret.");
                 }
                 else sendInvalidCommandMessage(id);
                 break;
             case "Задачи":
-                if (currentState == 2) {
+                if (currentState == UserState.FOOD_PLANE) {
                     sendText(id, "Необходимо взвешивать себя каждый день. Взвешивать еду и фиксировать её в приложении, считать шаги, отправлять Маше отчеты.");
                 }
                 else sendInvalidCommandMessage(id);
                 break;
             case "Инвентарь для тренировок":
-                if (currentState == 3) {
+                if (currentState == UserState.TRAINING) {
                     sendText(id, "Телефон, чтобы снимать себя на видео, абонемент в любой тренажерный зал.");
                 }
                 else sendInvalidCommandMessage(id);
                 break;
             case "Созвон":
-                if (currentState == 3) {
+                if (currentState == UserState.TRAINING) {
                     sendText(id, "Подробно обсудим все твои вопросы в формате видеозвонка в удобное для тебя время за деньги.");
                 }
                 else sendInvalidCommandMessage(id);
                 break;
             case "Танцы":
-                if (currentState == 3) {
+                if (currentState == UserState.TRAINING) {
                     sendText(id, "Персональные и групповые занятия пока только очно.");
                 }
                 else sendInvalidCommandMessage(id);
                 break;
             case "Назад":
-                if (currentState == 2 || currentState == 3) {
-                    sendMessageWithKeyboard(id, 4);
-                    sendWelcomeMessage(id, 1);
-                    userState.put(id, 1);
+                if (currentState == UserState.FOOD_PLANE || currentState == UserState.TRAINING) {
+                    sendWelcomeMessage(id, 4);
+                    userState.put(id, UserState.NEW_USER);
                 }
                 else sendInvalidCommandMessage(id);
                 break;
