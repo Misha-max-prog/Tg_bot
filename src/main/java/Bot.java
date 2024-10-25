@@ -16,7 +16,7 @@ import java.util.List;
 
 public class Bot extends TelegramLongPollingBot {
 
-    private  Map<Long, UserState> userState = new HashMap<>();
+    private final Map<Long, UserState> userState = new HashMap<>();
 
     @Override
     public String getBotUsername() {
@@ -42,176 +42,174 @@ public class Bot extends TelegramLongPollingBot {
         System.out.println(user.getFirstName() + " wrote " + msg.getText());
 
         UserState currentState = userState.getOrDefault(id, UserState.NO_USER);
-        // создавать пакеты
-        // объединить ифами кейсы
-        // для sendWelcomeMessage(id, ...); сделать enum тоже
-        // по хорошему объединить sendWelcomeMessage и sendMessageWithKeyboard
+
         switch (msg.getText()) {
             case "/start":
-                if (currentState == UserState.NO_USER) {
-                    sendWelcomeMessage(id, 1);
-                    userState.put(id, UserState.NEW_USER);
-                }
-                else sendInvalidCommandMessage(id);
+                handleStart(id, currentState);
                 break;
             case "План питания":
-                if (currentState == UserState.NEW_USER) {
-                    sendText(id, "Выстраивание гибкого и здорового рациона в соответсвии с твоими задачами. И вкусное, и полезное по заветаи гибкой диеты.");
-                    sendMessageWithKeyboard(id, 2);
-                    userState.put(id, UserState.FOOD_PLANE);
-                }
-                else sendInvalidCommandMessage(id);
+                handleFoodPlan(id, currentState);
                 break;
             case "Тренировки":
-                if (currentState == UserState.NEW_USER) {
-                    sendText(id, "Грамотная программа упражнений с описанием техники их выполнения и видеоинструкций. Обсудим твои спортивные задачи и придём к согласию по программе тренировок и количеству занятий.");
-                    sendMessageWithKeyboard(id, 3);
-                    userState.put(id, UserState.TRAINING);
-                }
-                else sendInvalidCommandMessage(id);
-
+                handleTraining(id, currentState);
                 break;
             case "Инвентарь для питания":
-                if (currentState == UserState.FOOD_PLANE) {
-                    sendText(id, "Кухонные весы, напольные весы, метровая лента, шагомер, счетчик калорий FatSecret.");
-                }
-                else sendInvalidCommandMessage(id);
+                handleFoodInventory(id, currentState);
                 break;
             case "Задачи":
-                if (currentState == UserState.FOOD_PLANE) {
-                    sendText(id, "Необходимо взвешивать себя каждый день. Взвешивать еду и фиксировать её в приложении, считать шаги, отправлять Маше отчеты.");
-                }
-                else sendInvalidCommandMessage(id);
+                handleFoodTasks(id, currentState);
                 break;
             case "Инвентарь для тренировок":
-                if (currentState == UserState.TRAINING) {
-                    sendText(id, "Телефон, чтобы снимать себя на видео, абонемент в любой тренажерный зал.");
-                }
-                else sendInvalidCommandMessage(id);
+                handleTrainingInventory(id, currentState);
                 break;
             case "Созвон":
-                if (currentState == UserState.TRAINING) {
-                    sendText(id, "Подробно обсудим все твои вопросы в формате видеозвонка в удобное для тебя время за деньги.");
-                }
-                else sendInvalidCommandMessage(id);
+                handleCall(id, currentState);
                 break;
             case "Танцы":
-                if (currentState == UserState.TRAINING) {
-                    sendText(id, "Персональные и групповые занятия пока только очно.");
-                }
-                else sendInvalidCommandMessage(id);
+                handleDance(id, currentState);
                 break;
             case "Назад":
-                if (currentState == UserState.FOOD_PLANE || currentState == UserState.TRAINING) {
-                    sendWelcomeMessage(id, 4);
-                    userState.put(id, UserState.NEW_USER);
-                }
-                else sendInvalidCommandMessage(id);
+                handleBack(id, currentState);
                 break;
             default:
                 sendInvalidCommandMessage(id);
                 break;
         }
     }
-    // Метод для отправки приветственного сообщения с клавиатурой
-    public void sendMessageWithKeyboard(Long chatId, int key) {
-        SendMessage sm = SendMessage.builder()
-                .chatId(chatId.toString())
-                .text(sendMessage(key))
-                .replyMarkup(createKeyboard(key)) // Добавляем клавиатуру к сообщению
-                .build();
-        try {
-            execute(sm);
-        } catch (TelegramApiException e) {
-            throw new RuntimeException(e);
-        }
-    }
-    public String sendMessage(int value){
-        String AskMessage = (String) "Вопросы по работе?";
-        String HelloMessage = (String) "Привет, я бот Марии Кицы Плюшки рассказываю как начать взаимодействие и отвечаю на основные вопросы.";
-        String BackMessage = (String) "Хорошо, вернёмся.";
-        if (value==1){
-            return HelloMessage;
-        }
-        if (value==2 || value==3){
-            return AskMessage;
-        }
-        if (value==4){
-            return BackMessage;
-        }
-        return "";
-    }
 
-    // Метод для отправки приветственного сообщения с клавиатурой
-    public void sendWelcomeMessage(Long chatId, int val) {
-        SendMessage sm = SendMessage.builder()
-                .chatId(chatId.toString())
-                .text(sendMessage(val))
-                .replyMarkup(createKeyboard(1)) // Добавляем клавиатуру к сообщению
-                .build();
-        try {
-            execute(sm);
-        } catch (TelegramApiException e) {
-            throw new RuntimeException(e);
+    // Методы для обработки сообщений
+    private void handleStart(Long id, UserState currentState) {
+        if (currentState == UserState.NO_USER) {
+            sendMessage(id, MessageType.WELCOME);
+            userState.put(id, UserState.NEW_USER);
+        } else {
+            sendInvalidCommandMessage(id);
         }
     }
 
-    // Создаем клавиатуру
-    private ReplyKeyboardMarkup createKeyboard(int value) {
+    private void handleFoodPlan(Long id, UserState currentState) {
+        if (currentState == UserState.NEW_USER) {
+            sendMessage(id, MessageType.FOOD_PLAN);
+            userState.put(id, UserState.FOOD_PLAN);
+        } else {
+            sendInvalidCommandMessage(id);
+        }
+    }
+
+    private void handleTraining(Long id, UserState currentState) {
+        if (currentState == UserState.NEW_USER) {
+            sendMessage(id, MessageType.TRAINING);
+            userState.put(id, UserState.TRAINING);
+        } else {
+            sendInvalidCommandMessage(id);
+        }
+    }
+
+    private void handleFoodInventory(Long id, UserState currentState) {
+        if (currentState == UserState.FOOD_PLAN) {
+            sendMessage(id, MessageType.FOOD_INVENTORY);
+        } else {
+            sendInvalidCommandMessage(id);
+        }
+    }
+
+    private void handleFoodTasks(Long id, UserState currentState) {
+        if (currentState == UserState.FOOD_PLAN) {
+            sendMessage(id, MessageType.FOOD_TASKS);
+        } else {
+            sendInvalidCommandMessage(id);
+        }
+    }
+
+    private void handleTrainingInventory(Long id, UserState currentState) {
+        if (currentState == UserState.TRAINING) {
+            sendMessage(id, MessageType.TRAINING_INVENTORY);
+        } else {
+            sendInvalidCommandMessage(id);
+        }
+    }
+
+    private void handleCall(Long id, UserState currentState) {
+        if (currentState == UserState.TRAINING) {
+            sendMessage(id, MessageType.CALL);
+        } else {
+            sendInvalidCommandMessage(id);
+        }
+    }
+
+    private void handleDance(Long id, UserState currentState) {
+        if (currentState == UserState.TRAINING) {
+            sendMessage(id, MessageType.DANCE);
+        } else {
+            sendInvalidCommandMessage(id);
+        }
+    }
+
+    private void handleBack(Long id, UserState currentState) {
+        if (currentState == UserState.FOOD_PLAN || currentState == UserState.TRAINING) {
+            sendMessage(id, MessageType.BACK);
+            userState.put(id, UserState.NEW_USER);
+        } else {
+            sendInvalidCommandMessage(id);
+        }
+    }
+
+    public void sendMessage(Long chatId, MessageType messageType) {
+        SendMessage sm = SendMessage.builder()
+                .chatId(chatId.toString())
+                .text(messageType.getText())
+                .replyMarkup(createKeyboard(messageType))
+                .build();
+        executeMessage(sm);
+    }
+
+    private ReplyKeyboardMarkup createKeyboard(MessageType messageType) {
         ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
-        keyboardMarkup.setResizeKeyboard(true); // Клавиатура будет подстраиваться под размер экрана
+        keyboardMarkup.setResizeKeyboard(true);
 
         List<KeyboardRow> keyboardRows = new ArrayList<>();
         KeyboardRow row1 = new KeyboardRow();
         KeyboardRow row2 = new KeyboardRow();
-        // Первый ряд кнопок
-        if (value==1) { //после приветствия
-            row1.add(new KeyboardButton("План питания"));
-            row1.add(new KeyboardButton("Тренировки"));
-            // Добавляем ряды в список
-            keyboardRows.add(row1);
-        }
-        if (value==2) { //после питания
-            row1.add(new KeyboardButton("Инвентарь для питания"));
-            row1.add(new KeyboardButton("Задачи"));
-            row2.add(new KeyboardButton("Назад"));
-            //Тут нужна кнопка назад!!!!!
-            // Добавляем ряды в список
-            keyboardRows.add(row1);
-            keyboardRows.add(row2);
-        }
-        if (value==3) { //после трень
-            row1.add(new KeyboardButton("Инвентарь для тренировок"));
-            row1.add(new KeyboardButton("Созвон"));
-            row2.add(new KeyboardButton("Танцы"));
-            row2.add(new KeyboardButton("Назад"));
-            //Тут нужна кнопка назад!!!!!
-            // Добавляем ряды в список
-            keyboardRows.add(row1);
-            keyboardRows.add(row2);
-        }
 
-        // Устанавливаем клавиатуру
+        switch (messageType) {
+            case WELCOME, BACK:
+                row1.add(new KeyboardButton("План питания"));
+                row1.add(new KeyboardButton("Тренировки"));
+                keyboardRows.add(row1);
+                break;
+            case FOOD_PLAN:
+                row1.add(new KeyboardButton("Инвентарь для питания"));
+                row1.add(new KeyboardButton("Задачи"));
+                row2.add(new KeyboardButton("Назад"));
+                keyboardRows.add(row1);
+                keyboardRows.add(row2);
+                break;
+            case TRAINING:
+                row1.add(new KeyboardButton("Инвентарь для тренировок"));
+                row1.add(new KeyboardButton("Созвон"));
+                row2.add(new KeyboardButton("Танцы"));
+                row2.add(new KeyboardButton("Назад"));
+                keyboardRows.add(row1);
+                keyboardRows.add(row2);
+                break;
+
+        }
         keyboardMarkup.setKeyboard(keyboardRows);
-
         return keyboardMarkup;
     }
 
     private void sendInvalidCommandMessage(Long chatId) {
-        sendText(chatId, "Не могу вам помочь, пожалуйста, выберите сообщение с клавиатуры.");
+        sendMessage(chatId, MessageType.INVALID_COMMAND);
     }
 
-    public void sendText(Long who, String what) {
-        SendMessage sm = SendMessage.builder()
-                .chatId(who.toString())
-                .text(what)
-                .build();
+    private void executeMessage(SendMessage message) {
         try {
-            execute(sm);
+            execute(message);
         } catch (TelegramApiException e) {
             throw new RuntimeException(e);
         }
     }
+
     public static void main(String[] args) throws TelegramApiException {
         TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
         Bot bot = new Bot();

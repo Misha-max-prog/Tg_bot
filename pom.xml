@@ -5,8 +5,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>groupID</groupId>
-    <artifactId>bot-tamogotchi</artifactId>
+    <artifactId>bot-for-sport-coach</artifactId>
     <version>1.0-SNAPSHOT</version>
+
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
@@ -17,9 +18,15 @@
     <dependencies>
 
         <dependency>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+            <version>3.36.0.3</version>
+        </dependency>
+
+        <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-            <version>1.2.11</version> <!-- Можете указать актуальную версию -->
+            <version>1.2.11</version>
         </dependency>
 
         <dependency>
@@ -27,8 +34,6 @@
             <artifactId>telegrambots</artifactId>
             <version>${telegram.version}</version>
         </dependency>
-
-
 
         <dependency>
             <groupId>org.telegram</groupId>
@@ -55,4 +60,5 @@
             <url>https://jitpack.io</url>
         </repository>
     </repositories>
+
 </project>
