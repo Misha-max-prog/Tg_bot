@@ -14,6 +14,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+
 public class Bot extends TelegramLongPollingBot {
 
     private final Map<Long, UserState> userState = new HashMap<>();
@@ -41,7 +45,7 @@ public class Bot extends TelegramLongPollingBot {
 
         System.out.println(user.getFirstName() + " wrote " + msg.getText());
 
-        UserState currentState = userState.getOrDefault(id, UserState.NO_USER);
+        UserState currentState = UserDatabase.getUserStateFromDatabase(id); // Получаем состояние из БД
 
         switch (msg.getText()) {
             case "/start":
@@ -79,18 +83,14 @@ public class Bot extends TelegramLongPollingBot {
 
     // Методы для обработки сообщений
     private void handleStart(Long id, UserState currentState) {
-        if (currentState == UserState.NO_USER) {
-            sendMessage(id, MessageType.WELCOME);
-            userState.put(id, UserState.NEW_USER);
-        } else {
-            sendInvalidCommandMessage(id);
-        }
+        sendMessage(id, MessageType.WELCOME);
+        UserDatabase.saveUserStateToDatabase(id, UserState.NEW_USER);
     }
 
     private void handleFoodPlan(Long id, UserState currentState) {
         if (currentState == UserState.NEW_USER) {
             sendMessage(id, MessageType.FOOD_PLAN);
-            userState.put(id, UserState.FOOD_PLAN);
+            UserDatabase.saveUserStateToDatabase(id, UserState.FOOD_PLAN);
         } else {
             sendInvalidCommandMessage(id);
         }
@@ -99,7 +99,7 @@ public class Bot extends TelegramLongPollingBot {
     private void handleTraining(Long id, UserState currentState) {
         if (currentState == UserState.NEW_USER) {
             sendMessage(id, MessageType.TRAINING);
-            userState.put(id, UserState.TRAINING);
+            UserDatabase.saveUserStateToDatabase(id, UserState.TRAINING);
         } else {
             sendInvalidCommandMessage(id);
         }
@@ -148,7 +148,7 @@ public class Bot extends TelegramLongPollingBot {
     private void handleBack(Long id, UserState currentState) {
         if (currentState == UserState.FOOD_PLAN || currentState == UserState.TRAINING) {
             sendMessage(id, MessageType.BACK);
-            userState.put(id, UserState.NEW_USER);
+            UserDatabase.saveUserStateToDatabase(id, UserState.NEW_USER);
         } else {
             sendInvalidCommandMessage(id);
         }
@@ -211,8 +211,10 @@ public class Bot extends TelegramLongPollingBot {
     }
 
     public static void main(String[] args) throws TelegramApiException {
+        UserDatabase.createTable(); // Создание таблицы при запуске бота
         TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
         Bot bot = new Bot();
         botsApi.registerBot(bot);
+        UserDatabase.printUserStates(); // Печать данных в консоль
     }
 }
