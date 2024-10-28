@@ -10,8 +10,6 @@ import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.List;
 
 import java.sql.Connection;
@@ -20,7 +18,7 @@ import java.sql.SQLException;
 
 public class Bot extends TelegramLongPollingBot {
 
-    private final Map<Long, UserState> userState = new HashMap<>();
+    private final AdminService adminService = new AdminService(this);
 
     @Override
     public String getBotUsername() {
@@ -31,7 +29,6 @@ public class Bot extends TelegramLongPollingBot {
     public String getBotToken() {
         return Token.ReadToken();
     }
-
     @Override
     public void onUpdateReceived(Update update) {
 
@@ -42,20 +39,35 @@ public class Bot extends TelegramLongPollingBot {
 
         var user = msg.getFrom();
         var id = user.getId();
+        var userName = user.getFirstName();
 
         System.out.println(user.getFirstName() + " wrote " + msg.getText());
 
-        UserState currentState = UserDatabase.getUserStateFromDatabase(id); // Получаем состояние из БД
+        UserState currentState = UserDatabase.getUserStateFromDatabase(id);
 
+        if (adminService.isAdmin(id)) {
+            switch (msg.getText()) {
+                case "/admin":
+                    handleAdmin(id, userName, currentState);
+                    adminService.showAdminPanel(id);
+                    break;
+                case "Просмотреть всех пользователей":
+                    adminService.showAllUsers(id);
+                    break;
+                case "Назад":
+                    handleBack(id, userName,currentState);
+                    break;
+            }
+        }
         switch (msg.getText()) {
             case "/start":
-                handleStart(id, currentState);
+                handleStart(id, userName, currentState);
                 break;
             case "План питания":
-                handleFoodPlan(id, currentState);
+                handleFoodPlan(id, userName,currentState);
                 break;
             case "Тренировки":
-                handleTraining(id, currentState);
+                handleTraining(id, userName,currentState);
                 break;
             case "Инвентарь для питания":
                 handleFoodInventory(id, currentState);
@@ -73,33 +85,40 @@ public class Bot extends TelegramLongPollingBot {
                 handleDance(id, currentState);
                 break;
             case "Назад":
-                handleBack(id, currentState);
-                break;
+                if (!adminService.isAdmin(id)) {
+                    handleBack(id, userName, currentState);
+                    break;
+                }
             default:
-                sendInvalidCommandMessage(id);
-                break;
+                if (!adminService.isAdmin(id)) {
+                    sendInvalidCommandMessage(id);
+                    break;
+                }
         }
     }
 
     // Методы для обработки сообщений
-    private void handleStart(Long id, UserState currentState) {
+    private void handleAdmin(Long id,String userName, UserState currentState) {
+        UserDatabase.saveUserStateToDatabase(id, userName, UserState.ADMIN);
+    }
+    private void handleStart(Long id,String userName, UserState currentState) {
         sendMessage(id, MessageType.WELCOME);
-        UserDatabase.saveUserStateToDatabase(id, UserState.NEW_USER);
+        UserDatabase.saveUserStateToDatabase(id, userName, UserState.NEW_USER);
     }
 
-    private void handleFoodPlan(Long id, UserState currentState) {
+    private void handleFoodPlan(Long id, String userName, UserState currentState) {
         if (currentState == UserState.NEW_USER) {
             sendMessage(id, MessageType.FOOD_PLAN);
-            UserDatabase.saveUserStateToDatabase(id, UserState.FOOD_PLAN);
+            UserDatabase.saveUserStateToDatabase(id, userName, UserState.FOOD_PLAN);
         } else {
             sendInvalidCommandMessage(id);
         }
     }
 
-    private void handleTraining(Long id, UserState currentState) {
+    private void handleTraining(Long id, String userName, UserState currentState) {
         if (currentState == UserState.NEW_USER) {
             sendMessage(id, MessageType.TRAINING);
-            UserDatabase.saveUserStateToDatabase(id, UserState.TRAINING);
+            UserDatabase.saveUserStateToDatabase(id, userName, UserState.TRAINING);
         } else {
             sendInvalidCommandMessage(id);
         }
@@ -145,10 +164,10 @@ public class Bot extends TelegramLongPollingBot {
         }
     }
 
-    private void handleBack(Long id, UserState currentState) {
-        if (currentState == UserState.FOOD_PLAN || currentState == UserState.TRAINING) {
+    private void handleBack(Long id, String userName, UserState currentState) {
+        if (currentState == UserState.FOOD_PLAN || currentState == UserState.TRAINING || currentState == UserState.ADMIN) {
             sendMessage(id, MessageType.BACK);
-            UserDatabase.saveUserStateToDatabase(id, UserState.NEW_USER);
+            UserDatabase.saveUserStateToDatabase(id, userName, UserState.NEW_USER);
         } else {
             sendInvalidCommandMessage(id);
         }
@@ -192,7 +211,12 @@ public class Bot extends TelegramLongPollingBot {
                 keyboardRows.add(row1);
                 keyboardRows.add(row2);
                 break;
-
+            case ADMIN_PANEL:
+                row1.add(new KeyboardButton("Просмотреть всех пользователей"));
+                row2.add(new KeyboardButton("Назад"));
+                keyboardRows.add(row1);
+                keyboardRows.add(row2);
+                break;
         }
         keyboardMarkup.setKeyboard(keyboardRows);
         return keyboardMarkup;
@@ -202,7 +226,7 @@ public class Bot extends TelegramLongPollingBot {
         sendMessage(chatId, MessageType.INVALID_COMMAND);
     }
 
-    private void executeMessage(SendMessage message) {
+    void executeMessage(SendMessage message) {
         try {
             execute(message);
         } catch (TelegramApiException e) {
