@@ -1,5 +1,10 @@
+package bot;
+
+import admin.AdminService;
+import database.UserDatabase;
+import util.Token;
+
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
-import org.telegram.telegrambots.meta.api.methods.CopyMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
@@ -11,10 +16,6 @@ import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
 
 public class Bot extends TelegramLongPollingBot {
 
@@ -226,7 +227,7 @@ public class Bot extends TelegramLongPollingBot {
         sendMessage(chatId, MessageType.INVALID_COMMAND);
     }
 
-    void executeMessage(SendMessage message) {
+    public void executeMessage(SendMessage message) {
         try {
             execute(message);
         } catch (TelegramApiException e) {

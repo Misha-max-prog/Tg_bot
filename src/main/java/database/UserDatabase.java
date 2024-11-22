@@ -1,3 +1,7 @@
+package database;
+
+import bot.UserState;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;

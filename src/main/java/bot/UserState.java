@@ -1,3 +1,5 @@
+package bot;
+
 public enum UserState {
     ADMIN,
     NO_USER,
