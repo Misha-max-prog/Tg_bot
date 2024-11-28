@@ -17,6 +17,9 @@ import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 import java.util.ArrayList;
 import java.util.List;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 public class Bot extends TelegramLongPollingBot {
 
     private final AdminService adminService = new AdminService(this);
@@ -33,6 +36,8 @@ public class Bot extends TelegramLongPollingBot {
     @Override
     public void onUpdateReceived(Update update) {
 
+        LocalDateTime now = LocalDateTime.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
         var msg = update.getMessage();
         if (msg == null || !msg.hasText()) {
             return;
@@ -41,6 +46,7 @@ public class Bot extends TelegramLongPollingBot {
         var user = msg.getFrom();
         var id = user.getId();
         var userName = user.getFirstName();
+        var lastUsed = now.format(formatter);
 
         System.out.println(user.getFirstName() + " wrote " + msg.getText());
 
@@ -56,19 +62,22 @@ public class Bot extends TelegramLongPollingBot {
                     adminService.showAllUsers(id);
                     break;
                 case "Назад":
-                    handleBack(id, userName,currentState);
+                    handleBack(id, userName,currentState, lastUsed);
                     break;
             }
         }
         switch (msg.getText()) {
             case "/start":
-                handleStart(id, userName, currentState);
+                handleStart(id, userName, currentState, lastUsed);
                 break;
             case "План питания":
-                handleFoodPlan(id, userName,currentState);
+                handleFoodPlan(id, userName,currentState, lastUsed);
                 break;
             case "Тренировки":
-                handleTraining(id, userName,currentState);
+                handleTraining(id, userName,currentState, lastUsed);
+                break;
+            case "Оплатить":
+                handlePay(id,currentState);
                 break;
             case "Инвентарь для питания":
                 handleFoodInventory(id, currentState);
@@ -87,7 +96,7 @@ public class Bot extends TelegramLongPollingBot {
                 break;
             case "Назад":
                 if (!adminService.isAdmin(id)) {
-                    handleBack(id, userName, currentState);
+                    handleBack(id, userName, currentState, lastUsed);
                     break;
                 }
             default:
@@ -100,30 +109,39 @@ public class Bot extends TelegramLongPollingBot {
 
     // Методы для обработки сообщений
     private void handleAdmin(Long id,String userName, UserState currentState) {
-        UserDatabase.saveUserStateToDatabase(id, userName, UserState.ADMIN);
+        UserDatabase.saveUserStateToDatabase(id, userName, UserState.ADMIN, null, null);
     }
-    private void handleStart(Long id,String userName, UserState currentState) {
+    private void handleStart(Long id,String userName, UserState currentState, String lastUsed) {
         sendMessage(id, MessageType.WELCOME);
-        UserDatabase.saveUserStateToDatabase(id, userName, UserState.NEW_USER);
+        UserDatabase.saveUserStateToDatabase(id, userName, UserState.NEW_USER, lastUsed, null);
     }
 
-    private void handleFoodPlan(Long id, String userName, UserState currentState) {
+    private void handleFoodPlan(Long id, String userName, UserState currentState, String lastUsed) {
         if (currentState == UserState.NEW_USER) {
             sendMessage(id, MessageType.FOOD_PLAN);
-            UserDatabase.saveUserStateToDatabase(id, userName, UserState.FOOD_PLAN);
+            UserDatabase.saveUserStateToDatabase(id, userName, UserState.FOOD_PLAN, lastUsed, null);
         } else {
             sendInvalidCommandMessage(id);
         }
     }
 
-    private void handleTraining(Long id, String userName, UserState currentState) {
+    private void handleTraining(Long id, String userName, UserState currentState, String lastUsed) {
         if (currentState == UserState.NEW_USER) {
             sendMessage(id, MessageType.TRAINING);
-            UserDatabase.saveUserStateToDatabase(id, userName, UserState.TRAINING);
+            UserDatabase.saveUserStateToDatabase(id, userName, UserState.TRAINING, lastUsed, null);
         } else {
             sendInvalidCommandMessage(id);
         }
     }
+
+    private void handlePay(Long id, UserState currentState) {
+        if (currentState == UserState.NEW_USER) {
+            sendMessage(id, MessageType.PAY);
+        } else {
+            sendInvalidCommandMessage(id);
+        }
+    }
+
 
     private void handleFoodInventory(Long id, UserState currentState) {
         if (currentState == UserState.FOOD_PLAN) {
@@ -165,10 +183,10 @@ public class Bot extends TelegramLongPollingBot {
         }
     }
 
-    private void handleBack(Long id, String userName, UserState currentState) {
+    private void handleBack(Long id, String userName, UserState currentState, String lastUsed) {
         if (currentState == UserState.FOOD_PLAN || currentState == UserState.TRAINING || currentState == UserState.ADMIN) {
             sendMessage(id, MessageType.BACK);
-            UserDatabase.saveUserStateToDatabase(id, userName, UserState.NEW_USER);
+            UserDatabase.saveUserStateToDatabase(id, userName, UserState.NEW_USER, lastUsed, null);
         } else {
             sendInvalidCommandMessage(id);
         }
@@ -195,7 +213,9 @@ public class Bot extends TelegramLongPollingBot {
             case WELCOME, BACK:
                 row1.add(new KeyboardButton("План питания"));
                 row1.add(new KeyboardButton("Тренировки"));
+                row2.add(new KeyboardButton("Оплатить"));
                 keyboardRows.add(row1);
+                keyboardRows.add(row2);
                 break;
             case FOOD_PLAN:
                 row1.add(new KeyboardButton("Инвентарь для питания"));
