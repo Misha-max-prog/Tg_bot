@@ -19,7 +19,6 @@ public class UserDatabase {
                 "last_used TEXT," +  // Новый столбец для времени последнего использования
                 "last_paid TEXT" +   // Новый столбец для времени последней оплаты
                 ");";
-                ;
 
         try (Connection connection = DatabaseConnection.connect();
              PreparedStatement pstmt = connection.prepareStatement(sql)) {
@@ -80,7 +79,8 @@ public class UserDatabase {
         }
     }
     public static void printUserStates() {
-        String query = "SELECT user_id, user_name, state FROM user_states";
+
+        String query = "SELECT user_id, user_name, state, last_used, last_paid FROM user_states";
 
         try (Connection connection = DatabaseConnection.connect();
              PreparedStatement preparedStatement = connection.prepareStatement(query);
