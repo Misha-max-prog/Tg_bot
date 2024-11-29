@@ -15,7 +15,7 @@ public class UserDatabase {
         String sql = "CREATE TABLE IF NOT EXISTS user_states (" +
                 "user_id INTEGER PRIMARY KEY," +
                 "user_name TEXT NOT NULL," +
-                "state TEXT NOT NULLFixing a bug with creating fields in the database," +
+                "state TEXT NOT NULL," +
                 "last_used TEXT," +  // Новый столбец для времени последнего использования
                 "last_paid TEXT" +   // Новый столбец для времени последней оплаты
                 ");";
@@ -96,7 +96,7 @@ public class UserDatabase {
                 String lastPaid = resultSet.getString("last_paid");
 
                 System.out.println("ID: " + userId + ", Имя: " + userName + ", " +
-                        "Состояние: " + state + "Последнее использование: " + lastUsed + "Последняя оплата: " + lastPaid);
+                        "Состояние: " + state + "Последнее использование: " + lastUsed + " Последняя оплата: " + lastPaid);
             }
         } catch (SQLException e) {
             System.out.println("Ошибка при получении данных пользователей: " + e.getMessage());
