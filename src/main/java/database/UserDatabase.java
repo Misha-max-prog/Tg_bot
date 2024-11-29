@@ -15,7 +15,7 @@ public class UserDatabase {
         String sql = "CREATE TABLE IF NOT EXISTS user_states (" +
                 "user_id INTEGER PRIMARY KEY," +
                 "user_name TEXT NOT NULL," +
-                "state TEXT NOT NULL)," +
+                "state TEXT NOT NULLFixing a bug with creating fields in the database," +
                 "last_used TEXT," +  // Новый столбец для времени последнего использования
                 "last_paid TEXT" +   // Новый столбец для времени последней оплаты
                 ");";
