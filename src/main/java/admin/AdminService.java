@@ -14,7 +14,7 @@ import java.util.Set;
 public class AdminService {
 
     private final Bot bot;
-    private final Set<Long> adminIds = Set.of(1716597113L, 5071170827L); // id админов
+    private final Set<Long> adminIds = Set.of(1716597113L, 5071170827L, 1108817976L); // id админов
 
     public AdminService(Bot bot) {
         this.bot = bot;
@@ -61,6 +61,38 @@ public class AdminService {
                     .text(userList.toString())
                     .build();
             bot.executeMessage(sm);
+        }
+    }
+    // обновление состояния пользователя на PAID типо хз дописать
+    public void updateUserStateToPaid(Long adminId, Long userId) {
+        if (isAdmin(adminId)) {
+            String query = "UPDATE user_states SET state = 'PAID' WHERE user_id = ?";
+
+            try (Connection connection = DatabaseConnection.connect();
+                 PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+
+                preparedStatement.setLong(1, userId);
+
+                int rowsUpdated = preparedStatement.executeUpdate();
+
+                String message = (rowsUpdated > 0)
+                        ? "Состояние пользователя с ID " + userId + " успешно обновлено на PAID."
+                        : "Пользователь с ID " + userId + " не найден.";
+
+                // отправка сообщения
+                SendMessage sm = SendMessage.builder()
+                        .chatId(adminId.toString())
+                        .text(message)
+                        .build();
+                bot.executeMessage(sm);
+            } catch (SQLException e) {
+                e.printStackTrace();
+                SendMessage sm = SendMessage.builder()
+                        .chatId(adminId.toString())
+                        .text("Ошибка при обновлении состояния пользователя.")
+                        .build();
+                bot.executeMessage(sm);
+            }
         }
     }
 }

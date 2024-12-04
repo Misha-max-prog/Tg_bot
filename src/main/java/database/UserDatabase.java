@@ -6,7 +6,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.Objects;
 
 public class UserDatabase {
 
@@ -49,6 +52,23 @@ public class UserDatabase {
                 lastUsed = resultSet.getString("last_used");
                 lastPaid = resultSet.getString("last_paid");
             }
+            if (lastPaid != null && lastUsed != null) { //функция для проверки сколько времени прошло с оплаты
+//                DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+
+
+//                LocalDateTime lastPaidTime = LocalDateTime.parse(lastPaid, formatter);
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+                LocalDate lastPaidTime = LocalDate.parse(lastPaid, formatter);
+                LocalDate now = LocalDate.now();
+
+                long monthsBetween = ChronoUnit.MONTHS.between(lastPaidTime, now);
+                //System.out.println("TIME: "+ monthsBetween);
+
+                if (monthsBetween > 1) {
+                    // Если прошло больше месяца, уведомляем пользователя
+                    state = UserState.NOT_PAID; // Переводим состояние пользователя в "NOT_PAID"
+                }
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -78,6 +98,7 @@ public class UserDatabase {
             e.printStackTrace();
         }
     }
+
     public static void printUserStates() {
 
         String query = "SELECT user_id, user_name, state, last_used, last_paid FROM user_states";
