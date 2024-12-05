@@ -9,6 +9,8 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 public class UserDatabase {
@@ -19,7 +21,7 @@ public class UserDatabase {
                 "user_id INTEGER PRIMARY KEY," +
                 "user_name TEXT NOT NULL," +
                 "state TEXT NOT NULL," +
-                "last_used TEXT," +  // Новый столбец для времени последнего использования
+                "Reminder_time TEXT," +  // Новый столбец для времени последнего использования
                 "last_paid TEXT" +   // Новый столбец для времени последней оплаты
                 ");";
 
@@ -36,10 +38,10 @@ public class UserDatabase {
     public static UserState getUserStateFromDatabase(Long userId) {
         UserState state = UserState.NO_USER;
         String userName = null;
-        String lastUsed = null;
+        String reminderTime = null;
         String lastPaid = null;
 
-        String query = "SELECT user_name, state, last_used, last_paid FROM user_states WHERE user_id = ?";
+        String query = "SELECT user_name, state, Reminder_time, last_paid FROM user_states WHERE user_id = ?";
         try (Connection connection = DatabaseConnection.connect();
              PreparedStatement preparedStatement = connection.prepareStatement(query)) {
             preparedStatement.setLong(1, userId);
@@ -49,14 +51,14 @@ public class UserDatabase {
                 userName = resultSet.getString("user_name");
                 String stateStr = resultSet.getString("state");
                 state = UserState.valueOf(stateStr);
-                lastUsed = resultSet.getString("last_used");
+                reminderTime = resultSet.getString("Reminder_time");
                 lastPaid = resultSet.getString("last_paid");
             }
-            if (lastPaid != null && lastUsed != null) { //функция для проверки сколько времени прошло с оплаты
-//                DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+            if (lastPaid != null && reminderTime != null) {
+                //функция для проверки сколько времени прошло с оплаты
+                //DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
-
-//                LocalDateTime lastPaidTime = LocalDateTime.parse(lastPaid, formatter);
+                // LocalDateTime lastPaidTime = LocalDateTime.parse(lastPaid, formatter);
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
                 LocalDate lastPaidTime = LocalDate.parse(lastPaid, formatter);
                 LocalDate now = LocalDate.now();
@@ -73,27 +75,27 @@ public class UserDatabase {
             e.printStackTrace();
         }
         System.out.println("ID:" + userId + " | Пользователь: " + userName + " | Состояние: " + state +
-                " | Последний визит: " + lastUsed + " | Последняя оплата: " + lastPaid);
+                " | Последний визит: " + reminderTime + " | Последняя оплата: " + lastPaid);
         return state;
     }
 
     // Метод для сохранения состояния пользователя в базе данных
-    public static void saveUserStateToDatabase(Long userId, String userName, UserState state, String lastUsed, String lastPaid) {
-        String insertOrUpdate = "INSERT INTO user_states (user_id, user_name, state, last_used, last_paid) " +
+    public static void saveUserStateToDatabase(Long userId, String userName, UserState state, String reminderTime, String lastPaid) {
+        String insertOrUpdate = "INSERT INTO user_states (user_id, user_name, state, Reminder_time, last_paid) " +
                 "VALUES (?, ?, ?, ?, ?) " +
                 "ON CONFLICT(user_id) DO UPDATE SET user_name = excluded.user_name, " +
-                "state = excluded.state, last_used = excluded.last_used, last_paid = excluded.last_paid";
+                "state = excluded.state, Reminder_time = excluded.Reminder_time, last_paid = excluded.last_paid";
 
         try (Connection connection = DatabaseConnection.connect();
              PreparedStatement preparedStatement = connection.prepareStatement(insertOrUpdate)) {
             preparedStatement.setLong(1, userId);
             preparedStatement.setString(2, userName);
             preparedStatement.setString(3, state.name());
-            preparedStatement.setString(4, lastUsed);  // Время последнего использования
+            preparedStatement.setString(4, reminderTime);  // Время последнего использования
             preparedStatement.setString(5, lastPaid); // Время последней оплаты
             int rowsAffected = preparedStatement.executeUpdate();
             System.out.println("Состояние пользователя " + userId + " обновлено в базе данных. Затронуто строк: " +
-                    rowsAffected + " | Состояние: " + state + " | Последний визит: " + lastUsed + " | Последняя оплата: " + lastPaid);
+                    rowsAffected + " | Состояние: " + state + " | Последний визит: " + reminderTime + " | Последняя оплата: " + lastPaid);
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -101,7 +103,7 @@ public class UserDatabase {
 
     public static void printUserStates() {
 
-        String query = "SELECT user_id, user_name, state, last_used, last_paid FROM user_states";
+        String query = "SELECT user_id, user_name, state, Reminder_time, last_paid FROM user_states";
 
         try (Connection connection = DatabaseConnection.connect();
              PreparedStatement preparedStatement = connection.prepareStatement(query);
@@ -113,14 +115,63 @@ public class UserDatabase {
                 Long userId = resultSet.getLong("user_id");
                 String userName = resultSet.getString("user_name");
                 String state = resultSet.getString("state");
-                String lastUsed = resultSet.getString("last_used");
+                String reminderTime = resultSet.getString("Reminder_time");
                 String lastPaid = resultSet.getString("last_paid");
 
                 System.out.println("ID: " + userId + ", Имя: " + userName + ", " +
-                        "Состояние: " + state + "Последнее использование: " + lastUsed + " Последняя оплата: " + lastPaid);
+                        "Состояние: " + state + "Последнее использование: " + reminderTime + " Последняя оплата: " + lastPaid);
             }
         } catch (SQLException e) {
             System.out.println("Ошибка при получении данных пользователей: " + e.getMessage());
         }
+    }
+    public static void saveReminderTime(Long userId, String reminderTime) {
+        String query = "UPDATE user_states SET reminder_time = ? WHERE user_id = ?";
+
+        try (Connection connection = DatabaseConnection.connect();
+             PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+
+            preparedStatement.setString(1, reminderTime);  // Сохраняем время напоминания
+            preparedStatement.setLong(2, userId);  // Указываем ID пользователя
+            preparedStatement.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    public static String getReminderTime(Long userId) {
+        String query = "SELECT reminder_time FROM user_states WHERE user_id = ?";
+
+        try (Connection connection = DatabaseConnection.connect();
+             PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+
+            preparedStatement.setLong(1, userId);
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            if (resultSet.next()) {
+                return resultSet.getString("reminder_time");  // Возвращаем строку с временем напоминания
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return null;  // Если время не найдено, возвращаем null
+    }
+    public static List<Long> getUsersWithReminderTime() {
+        List<Long> userIds = new ArrayList<>();
+        String query = "SELECT user_id FROM user_states WHERE reminder_time IS NOT NULL AND reminder_time != ''";
+
+        try (Connection connection = DatabaseConnection.connect();
+             PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            while (resultSet.next()) {
+                userIds.add(resultSet.getLong("user_id"));  // Добавляем пользователей с установленным временем
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return userIds;
     }
 }

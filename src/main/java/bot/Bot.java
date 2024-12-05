@@ -14,18 +14,19 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
-import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Objects;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 
 public class Bot extends TelegramLongPollingBot {
-
     private final AdminService adminService = new AdminService(this);
+    private final ReminderService reminderService = new ReminderService(this);
 
     @Override
     public String getBotUsername() {
@@ -39,8 +40,6 @@ public class Bot extends TelegramLongPollingBot {
     @Override
     public void onUpdateReceived(Update update) {
 
-        LocalDateTime now = LocalDateTime.now();
-        DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
         var msg = update.getMessage();
         if (msg == null || !msg.hasText()) {
             return;
@@ -49,26 +48,24 @@ public class Bot extends TelegramLongPollingBot {
         var user = msg.getFrom();
         var id = user.getId();
         var userName = user.getFirstName();
-        var lastUsed = now.format(formatter);
 
-        System.out.println(user.getFirstName() + " wrote " + msg.getText());
+        var text = msg.getText();
+        System.out.println(user.getFirstName() + " wrote " + text);
 
         UserState currentState = UserDatabase.getUserStateFromDatabase(id);
         // Проверка на состояние "NOT_PAID" (если прошло больше месяца с последней оплаты)
         if (currentState == UserState.NOT_PAID) {
             sendMessage(id, MessageType.NOT_PAID);
-            UserDatabase.saveUserStateToDatabase(id, userName, UserState.NEW_USER, lastUsed, null);
+            UserDatabase.saveUserStateToDatabase(id, userName, UserState.NEW_USER, null, null);
             return; // Если пользователь не оплатил, выходим из метода
         }
 
-
-
-        if (adminService.isAdmin(id)) {
+        if (adminService.isAdmin(id) && currentState != UserState.PAID) {
             if (currentState == UserState.ADMIN_MES) {
-                handleChangeUserState(id, msg.getText());
+                handleChangeUserState(id, text);
                 UserDatabase.saveUserStateToDatabase(id, userName, UserState.ADMIN, null, null);
             }
-            switch (msg.getText()) {
+            switch (text) {
                 case "/admin":
                     handleAdmin(id, userName, currentState);
                     adminService.showAdminPanel(id);
@@ -81,18 +78,18 @@ public class Bot extends TelegramLongPollingBot {
                     UserDatabase.saveUserStateToDatabase(id, userName, UserState.ADMIN_MES, null, null);
                     break;
                 case "Назад":
-                    handleBack(id, userName,currentState, lastUsed);
+                    handleBack(id, userName, currentState);
                     break;
             }
         }
-        // проверка на состояние PAID
         if (currentState == UserState.PAID) {
-            switch (msg.getText()) {
+            switch (text) {
                 case "Оплачено":
                     showPaidPanel(id, currentState);
                     break;
                 case "Напоминания":
-                    handleReminders(id);
+                    sendMessage(id, MessageType.ENTER_REMINDER_TIME);  // Запрашиваем время
+                    UserDatabase.saveUserStateToDatabase(id, userName, UserState.SET_REMINDER_TIME, null, null);
                     break;
                 case "Отправить тренировку":
                     handleSendTraining(id);
@@ -100,51 +97,74 @@ public class Bot extends TelegramLongPollingBot {
                 case "Отправить фото еды":
                     handleSendFoodPhoto(id);
                     break;
-            }
-        }
-        switch (msg.getText()) {
-            case "/start":
-                handleStart(id, userName, currentState, lastUsed);
-
-                break;
-            case "План питания":
-                handleFoodPlan(id, userName,currentState, lastUsed);
-                break;
-            case "Тренировки":
-                handleTraining(id, userName,currentState, lastUsed);
-                break;
-            case "Оплатить":
-                handlePay(id,currentState);
-                break;
-            case "Инвентарь для питания":
-                handleFoodInventory(id, currentState);
-                break;
-            case "Задачи":
-                handleFoodTasks(id, currentState);
-                break;
-            case "Инвентарь для тренировок":
-                handleTrainingInventory(id, currentState);
-                break;
-            case "Созвон":
-                handleCall(id, currentState);
-                break;
-            case "Танцы":
-                handleDance(id, currentState);
-                break;
-            case "Назад":
-                if (!adminService.isAdmin(id)) {
-                    handleBack(id, userName, currentState, lastUsed);
+                case "/start":
+                    handleStart(id, userName, currentState);
                     break;
-                }
-            default:
-                if (!adminService.isAdmin(id)) {
+                default:
                     sendInvalidCommandMessage(id);
                     break;
-                }
+            }
+        }else if (currentState == UserState.SET_REMINDER_TIME) {
+            // Проверка, что введено правильное время
+            if (isValidTimeFormat(text)) {
+                UserDatabase.saveReminderTime(id, text);  // Сохраняем в базе
+                sendMessage(id, MessageType.REMINDER_SET);  // Подтверждение
+                UserDatabase.saveUserStateToDatabase(id, msg.getFrom().getFirstName(), UserState.PAID, text, null);
+            } else {
+                sendMessage(id, MessageType.INVALID_TIME_FORMAT);  // Некорректный формат времени
+            }
         }
-
+        else{
+            switch (text) {
+                case "/start":
+                    handleStart(id, userName, currentState);
+                    break;
+                case "План питания":
+                    handleFoodPlan(id, userName,currentState);
+                    break;
+                case "Тренировки":
+                    handleTraining(id, userName,currentState);
+                    break;
+                case "Оплатить":
+                    handlePay(id,currentState);
+                    break;
+                case "Инвентарь для питания":
+                    handleFoodInventory(id, currentState);
+                    break;
+                case "Задачи":
+                    handleFoodTasks(id, currentState);
+                    break;
+                case "Инвентарь для тренировок":
+                    handleTrainingInventory(id, currentState);
+                    break;
+                case "Созвон":
+                    handleCall(id, currentState);
+                    break;
+                case "Танцы":
+                    handleDance(id, currentState);
+                    break;
+                case "Назад":
+                    if (!adminService.isAdmin(id)) {
+                        handleBack(id, userName, currentState);
+                        break;
+                    }
+                default:
+                    if (!adminService.isAdmin(id)) {
+                        sendInvalidCommandMessage(id);
+                        break;
+                    }
+            }
+        }
     }
-
+    private boolean isValidTimeFormat(String time) {
+        try {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+            LocalTime.parse(time, formatter);  // Используем LocalTime вместо LocalDateTime
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
     // Методы для обработки сообщений
     private void handleAdmin(Long id,String userName, UserState currentState) {
         UserDatabase.saveUserStateToDatabase(id, userName, UserState.ADMIN, null, null);
@@ -170,24 +190,24 @@ public class Bot extends TelegramLongPollingBot {
     }
 
 
-    private void handleStart(Long id,String userName, UserState currentState, String lastUsed) {
+    private void handleStart(Long id,String userName, UserState currentState) {
         sendMessage(id, MessageType.WELCOME);
-        UserDatabase.saveUserStateToDatabase(id, userName, UserState.NEW_USER, lastUsed, null);
+        UserDatabase.saveUserStateToDatabase(id, userName, UserState.NEW_USER, null, null);
     }
 
-    private void handleFoodPlan(Long id, String userName, UserState currentState, String lastUsed) {
+    private void handleFoodPlan(Long id, String userName, UserState currentState) {
         if (currentState == UserState.NEW_USER) {
             sendMessage(id, MessageType.FOOD_PLAN);
-            UserDatabase.saveUserStateToDatabase(id, userName, UserState.FOOD_PLAN, lastUsed, null);
+            UserDatabase.saveUserStateToDatabase(id, userName, UserState.FOOD_PLAN, null, null);
         } else {
             sendInvalidCommandMessage(id);
         }
     }
 
-    private void handleTraining(Long id, String userName, UserState currentState, String lastUsed) {
+    private void handleTraining(Long id, String userName, UserState currentState) {
         if (currentState == UserState.NEW_USER) {
             sendMessage(id, MessageType.TRAINING);
-            UserDatabase.saveUserStateToDatabase(id, userName, UserState.TRAINING, lastUsed, null);
+            UserDatabase.saveUserStateToDatabase(id, userName, UserState.TRAINING, null, null);
         } else {
             sendInvalidCommandMessage(id);
         }
@@ -242,18 +262,15 @@ public class Bot extends TelegramLongPollingBot {
         }
     }
 
-    private void handleBack(Long id, String userName, UserState currentState, String lastUsed) {
+    private void handleBack(Long id, String userName, UserState currentState) {
         if (currentState == UserState.FOOD_PLAN || currentState == UserState.TRAINING || currentState == UserState.ADMIN) {
             sendMessage(id, MessageType.BACK);
-            UserDatabase.saveUserStateToDatabase(id, userName, UserState.NEW_USER, lastUsed, null);
+            UserDatabase.saveUserStateToDatabase(id, userName, UserState.NEW_USER, null, null);
         } else {
             sendInvalidCommandMessage(id);
         }
     }
 
-    private void handleReminders(Long id) {
-        sendMessage(id, MessageType.REMINDERS); //напоминания не реализованы
-    }
 
     private void handleSendTraining(Long id) {
         sendMessage(id, MessageType.SEND_TRAINING); //прием фото или текста не реализован
@@ -272,7 +289,8 @@ public class Bot extends TelegramLongPollingBot {
         executeMessage(sm);
     }
 
-    private ReplyKeyboardMarkup createKeyboard(MessageType messageType) {
+
+    private static ReplyKeyboardMarkup createKeyboard(MessageType messageType) {
         ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
         keyboardMarkup.setResizeKeyboard(true);
 
@@ -312,9 +330,8 @@ public class Bot extends TelegramLongPollingBot {
                 break;
             case PAID_USER: //панель для пользователя с состоянием PAID
                 row1.add(new KeyboardButton("Напоминания"));
-                row1.add(new KeyboardButton("Отправить тренировку"));
-                row2.add(new KeyboardButton("Отправить еду"));
-                row2.add(new KeyboardButton("Назад"));
+                row2.add(new KeyboardButton("Отправить тренировку"));
+                row2.add(new KeyboardButton("Отправить фото еды"));
                 keyboardRows.add(row1);
                 keyboardRows.add(row2);
                 break;
@@ -336,11 +353,21 @@ public class Bot extends TelegramLongPollingBot {
         }
     }
 
+    // Метод для запуска напоминаний каждую минуту
+    public void startReminderScheduler() {
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+
+        scheduler.scheduleAtFixedRate(() -> {
+            reminderService.checkAndSendReminder();
+        }, 0, 1, TimeUnit.MINUTES);
+    }
+
     public static void main(String[] args) throws TelegramApiException {
         UserDatabase.createTable(); // Создание таблицы при запуске бота
         TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
         Bot bot = new Bot();
         botsApi.registerBot(bot);
+        bot.startReminderScheduler();
         UserDatabase.printUserStates(); // Печать данных в консоль
     }
 }

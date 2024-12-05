@@ -9,4 +9,5 @@ public enum UserState {
     TRAINING,
     PAID,
     NOT_PAID,
+    SET_REMINDER_TIME,
 }
