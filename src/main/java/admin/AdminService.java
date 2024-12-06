@@ -11,6 +11,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Set;
 
 
@@ -69,12 +71,13 @@ public class AdminService {
     // обновление состояния пользователя на PAID типо хз дописать
     public void updateUserStateToPaid(Long adminId, Long userId) {
         if (isAdmin(adminId)) {
-            String query = "UPDATE user_states SET state = 'PAID' WHERE user_id = ?";
+            String query = "UPDATE user_states SET state = 'PAID', last_paid = ? WHERE user_id = ?";
 
             try (Connection connection = DatabaseConnection.connect();
                  PreparedStatement preparedStatement = connection.prepareStatement(query)) {
-
-                preparedStatement.setLong(1, userId);
+                LocalDateTime now = LocalDateTime.now();
+                preparedStatement.setString(1, now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                preparedStatement.setLong(2, userId);
 
                 int rowsUpdated = preparedStatement.executeUpdate();
 

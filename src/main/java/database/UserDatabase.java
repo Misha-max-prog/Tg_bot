@@ -54,7 +54,7 @@ public class UserDatabase {
                 reminderTime = resultSet.getString("Reminder_time");
                 lastPaid = resultSet.getString("last_paid");
             }
-            if (lastPaid != null && reminderTime != null) {
+            if (lastPaid != null) {
                 //функция для проверки сколько времени прошло с оплаты
                 //DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
@@ -64,7 +64,7 @@ public class UserDatabase {
                 LocalDate now = LocalDate.now();
 
                 long monthsBetween = ChronoUnit.MONTHS.between(lastPaidTime, now);
-                //System.out.println("TIME: "+ monthsBetween);
+                System.out.println("TIME: "+ monthsBetween);
 
                 if (monthsBetween > 1) {
                     // Если прошло больше месяца, уведомляем пользователя
@@ -75,12 +75,12 @@ public class UserDatabase {
             e.printStackTrace();
         }
         System.out.println("ID:" + userId + " | Пользователь: " + userName + " | Состояние: " + state +
-                " | Последний визит: " + reminderTime + " | Последняя оплата: " + lastPaid);
+                " | времня напоминания " + reminderTime + " | Последняя оплата: " + lastPaid);
         return state;
     }
 
     // Метод для сохранения состояния пользователя в базе данных
-    public static void saveUserStateToDatabase(Long userId, String userName, UserState state, String reminderTime, String lastPaid) {
+    public static void saveUserStateToDatabase(Long userId, String userName, UserState state, String reminderTime) {
         String insertOrUpdate = "INSERT INTO user_states (user_id, user_name, state, Reminder_time, last_paid) " +
                 "VALUES (?, ?, ?, ?, ?) " +
                 "ON CONFLICT(user_id) DO UPDATE SET user_name = excluded.user_name, " +
@@ -92,10 +92,9 @@ public class UserDatabase {
             preparedStatement.setString(2, userName);
             preparedStatement.setString(3, state.name());
             preparedStatement.setString(4, reminderTime);  // Время последнего использования
-            preparedStatement.setString(5, lastPaid); // Время последней оплаты
             int rowsAffected = preparedStatement.executeUpdate();
             System.out.println("Состояние пользователя " + userId + " обновлено в базе данных. Затронуто строк: " +
-                    rowsAffected + " | Состояние: " + state + " | Последний визит: " + reminderTime + " | Последняя оплата: " + lastPaid);
+                    rowsAffected + " | Состояние: " + state + " | время напоминания: " + reminderTime);
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -119,7 +118,7 @@ public class UserDatabase {
                 String lastPaid = resultSet.getString("last_paid");
 
                 System.out.println("ID: " + userId + ", Имя: " + userName + ", " +
-                        "Состояние: " + state + "Последнее использование: " + reminderTime + " Последняя оплата: " + lastPaid);
+                        "Состояние: " + state + "время напоминания: " + reminderTime + " Последняя оплата: " + lastPaid);
             }
         } catch (SQLException e) {
             System.out.println("Ошибка при получении данных пользователей: " + e.getMessage());

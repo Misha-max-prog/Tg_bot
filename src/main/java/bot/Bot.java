@@ -56,14 +56,14 @@ public class Bot extends TelegramLongPollingBot {
         // Проверка на состояние "NOT_PAID" (если прошло больше месяца с последней оплаты)
         if (currentState == UserState.NOT_PAID) {
             sendMessage(id, MessageType.NOT_PAID);
-            UserDatabase.saveUserStateToDatabase(id, userName, UserState.NEW_USER, null, null);
+            UserDatabase.saveUserStateToDatabase(id, userName, UserState.NEW_USER, null);
             return; // Если пользователь не оплатил, выходим из метода
         }
 
         if (adminService.isAdmin(id) && currentState != UserState.PAID) {
             if (currentState == UserState.ADMIN_MES) {
                 handleChangeUserState(id, text);
-                UserDatabase.saveUserStateToDatabase(id, userName, UserState.ADMIN, null, null);
+                UserDatabase.saveUserStateToDatabase(id, userName, UserState.ADMIN, null);
             }
             switch (text) {
                 case "/admin":
@@ -75,7 +75,7 @@ public class Bot extends TelegramLongPollingBot {
                     break;
                 case "Сменить состояние пользователя":
                     sendMessage(id, MessageType.PROMPT_USER_ID);
-                    UserDatabase.saveUserStateToDatabase(id, userName, UserState.ADMIN_MES, null, null);
+                    UserDatabase.saveUserStateToDatabase(id, userName, UserState.ADMIN_MES, null);
                     break;
                 case "Назад":
                     handleBack(id, userName, currentState);
@@ -89,7 +89,7 @@ public class Bot extends TelegramLongPollingBot {
                     break;
                 case "Напоминания":
                     sendMessage(id, MessageType.ENTER_REMINDER_TIME);  // Запрашиваем время
-                    UserDatabase.saveUserStateToDatabase(id, userName, UserState.SET_REMINDER_TIME, null, null);
+                    UserDatabase.saveUserStateToDatabase(id, userName, UserState.SET_REMINDER_TIME, null);
                     break;
                 case "Отправить тренировку":
                     handleSendTraining(id);
@@ -109,7 +109,7 @@ public class Bot extends TelegramLongPollingBot {
             if (isValidTimeFormat(text)) {
                 UserDatabase.saveReminderTime(id, text);  // Сохраняем в базе
                 sendMessage(id, MessageType.REMINDER_SET);  // Подтверждение
-                UserDatabase.saveUserStateToDatabase(id, msg.getFrom().getFirstName(), UserState.PAID, text, null);
+                UserDatabase.saveUserStateToDatabase(id, msg.getFrom().getFirstName(), UserState.PAID, text);
             } else {
                 sendMessage(id, MessageType.INVALID_TIME_FORMAT);  // Некорректный формат времени
             }
@@ -167,7 +167,7 @@ public class Bot extends TelegramLongPollingBot {
     }
     // Методы для обработки сообщений
     private void handleAdmin(Long id,String userName, UserState currentState) {
-        UserDatabase.saveUserStateToDatabase(id, userName, UserState.ADMIN, null, null);
+        UserDatabase.saveUserStateToDatabase(id, userName, UserState.ADMIN, null);
     }
     private void handleChangeUserState(Long adminId, String message) {
         // Получаем ID пользователя для смены состояния
@@ -192,13 +192,13 @@ public class Bot extends TelegramLongPollingBot {
 
     private void handleStart(Long id,String userName, UserState currentState) {
         sendMessage(id, MessageType.WELCOME);
-        UserDatabase.saveUserStateToDatabase(id, userName, UserState.NEW_USER, null, null);
+        UserDatabase.saveUserStateToDatabase(id, userName, UserState.NEW_USER, null);
     }
 
     private void handleFoodPlan(Long id, String userName, UserState currentState) {
         if (currentState == UserState.NEW_USER) {
             sendMessage(id, MessageType.FOOD_PLAN);
-            UserDatabase.saveUserStateToDatabase(id, userName, UserState.FOOD_PLAN, null, null);
+            UserDatabase.saveUserStateToDatabase(id, userName, UserState.FOOD_PLAN, null);
         } else {
             sendInvalidCommandMessage(id);
         }
@@ -207,7 +207,7 @@ public class Bot extends TelegramLongPollingBot {
     private void handleTraining(Long id, String userName, UserState currentState) {
         if (currentState == UserState.NEW_USER) {
             sendMessage(id, MessageType.TRAINING);
-            UserDatabase.saveUserStateToDatabase(id, userName, UserState.TRAINING, null, null);
+            UserDatabase.saveUserStateToDatabase(id, userName, UserState.TRAINING, null);
         } else {
             sendInvalidCommandMessage(id);
         }
@@ -265,7 +265,7 @@ public class Bot extends TelegramLongPollingBot {
     private void handleBack(Long id, String userName, UserState currentState) {
         if (currentState == UserState.FOOD_PLAN || currentState == UserState.TRAINING || currentState == UserState.ADMIN) {
             sendMessage(id, MessageType.BACK);
-            UserDatabase.saveUserStateToDatabase(id, userName, UserState.NEW_USER, null, null);
+            UserDatabase.saveUserStateToDatabase(id, userName, UserState.NEW_USER, null);
         } else {
             sendInvalidCommandMessage(id);
         }
