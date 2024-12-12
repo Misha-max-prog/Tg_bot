@@ -1,12 +1,15 @@
-package bot;
+package com.github.Tg_bot.bot;
 
-import database.UserDatabase;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import com.github.Tg_bot.database.UserDatabase;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 public class ReminderService {
     private final Bot bot;
+    private static final Logger logger = LoggerFactory.getLogger(ReminderService.class);
 
     public ReminderService(Bot bot) {
         this.bot = bot;
@@ -21,9 +24,9 @@ public class ReminderService {
         for (Long userId : usersWithReminderTime) {
             String reminderTime = UserDatabase.getReminderTime(userId); // Получаем время напоминания
             if (reminderTime != null) {
-                System.out.println("Пользователь: " + userId + ", Напоминание: " + reminderTime + ", Текущее время: " + currentTime);
+                logger.info("Пользователь: {}, Напоминание: {}, Текущее время: {}", userId, reminderTime, currentTime);
                 if (currentTime.format(timeFormatter).equals(reminderTime)) {
-                    System.out.println("Отправляем напоминание пользователю: " + userId);
+                    logger.info("Отправляем напоминание пользователю: {}", userId);
                     sendReminder(userId);  // Отправляем напоминание
                 }
             }

@@ -1,8 +1,11 @@
-package bot;
+package com.github.Tg_bot.bot;
 
-import admin.AdminService;
-import database.UserDatabase;
-import util.Token;
+import com.github.Tg_bot.admin.AdminService;
+import com.github.Tg_bot.database.UserDatabase;
+import com.github.Tg_bot.util.Token;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -25,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 
 
 public class Bot extends TelegramLongPollingBot {
+    private static final Logger logger = LoggerFactory.getLogger(Bot.class);
     private final AdminService adminService = new AdminService(this);
     private final ReminderService reminderService = new ReminderService(this);
 
@@ -50,11 +54,13 @@ public class Bot extends TelegramLongPollingBot {
         var userName = user.getFirstName();
 
         var text = msg.getText();
-        System.out.println(user.getFirstName() + " wrote " + text);
+        logger.info("User [{}] with ID [{}] wrote: {}", userName, id, text);
 
         UserState currentState = UserDatabase.getUserStateFromDatabase(id);
+
         // Проверка на состояние "NOT_PAID" (если прошло больше месяца с последней оплаты)
         if (currentState == UserState.NOT_PAID) {
+            logger.warn("User [{}] with ID [{}] is NOT_PAID. Sending notification and resetting state.", userName, id);
             sendMessage(id, MessageType.NOT_PAID);
             UserDatabase.saveUserStateToDatabase(id, userName, UserState.NEW_USER, null);
             return; // Если пользователь не оплатил, выходим из метода
@@ -67,17 +73,21 @@ public class Bot extends TelegramLongPollingBot {
             }
             switch (text) {
                 case "/admin":
+                    logger.info("Admin [{}] accessed admin panel", id);
                     handleAdmin(id, userName, currentState);
                     adminService.showAdminPanel(id);
                     break;
                 case "Просмотреть всех пользователей":
+                    logger.info("Admin [{}] requested to view all users", id);
                     adminService.showAllUsers(id);
                     break;
                 case "Сменить состояние пользователя":
+                    logger.info("Admin [{}] requested to change user state", id);
                     sendMessage(id, MessageType.PROMPT_USER_ID);
                     UserDatabase.saveUserStateToDatabase(id, userName, UserState.ADMIN_MES, null);
                     break;
                 case "Назад":
+                    logger.info("Admin [{}] navigated back", id);
                     handleBack(id, userName, currentState);
                     break;
             }
@@ -85,71 +95,98 @@ public class Bot extends TelegramLongPollingBot {
         if (currentState == UserState.PAID) {
             switch (text) {
                 case "Оплачено":
+                    logger.info("User [{}] selected 'Оплачено'", id);
                     showPaidPanel(id, currentState);
                     break;
-                case "Напоминания":
+                case "Установить напоминание":
+                    logger.info("User [{}] requested reminders", id);
                     sendMessage(id, MessageType.ENTER_REMINDER_TIME);  // Запрашиваем время
                     UserDatabase.saveUserStateToDatabase(id, userName, UserState.SET_REMINDER_TIME, null);
                     break;
+                case "Удалить напоминание":
+                    var time = UserDatabase.getReminderTime(id);
+                    if (time != null){
+                        logger.info("User [{}] deleted reminders", id);
+                        sendMessage(id, MessageType.DELETE_REMINDER_TIME);
+                        UserDatabase.saveUserStateToDatabase(id, userName, UserState.PAID, null);
+                    }
+                    else {
+                        logger.info("User [{}] try to deleted reminders again", id);
+                        sendMessage(id, MessageType.DELETE_REMINDER_TIME_AGAIN);
+                    }
+                    break;
                 case "Отправить тренировку":
+                    logger.info("User [{}] selected 'Отправить тренировку'", id);
                     handleSendTraining(id);
                     break;
                 case "Отправить фото еды":
+                    logger.info("User [{}] selected 'Отправить фото еды'", id);
                     handleSendFoodPhoto(id);
                     break;
-                case "/start":
-                    handleStart(id, userName, currentState);
-                    break;
                 default:
+                    logger.warn("User [{}] entered an invalid command", id);
                     sendInvalidCommandMessage(id);
                     break;
             }
         }else if (currentState == UserState.SET_REMINDER_TIME) {
             // Проверка, что введено правильное время
             if (isValidTimeFormat(text)) {
+                logger.info("User [{}] set a valid reminder time: {}", id, text);
                 UserDatabase.saveReminderTime(id, text);  // Сохраняем в базе
                 sendMessage(id, MessageType.REMINDER_SET);  // Подтверждение
                 UserDatabase.saveUserStateToDatabase(id, msg.getFrom().getFirstName(), UserState.PAID, text);
             } else {
+                logger.warn("User [{}] entered an invalid time format: {}", id, text);
                 sendMessage(id, MessageType.INVALID_TIME_FORMAT);  // Некорректный формат времени
             }
         }
         else{
             switch (text) {
                 case "/start":
+                    logger.info("User [{}] started the bot", id);
                     handleStart(id, userName, currentState);
                     break;
                 case "План питания":
+                    logger.info("User [{}] selected 'План питания'", id);
                     handleFoodPlan(id, userName,currentState);
                     break;
                 case "Тренировки":
+                    logger.info("User [{}] selected 'Тренировки'", id);
                     handleTraining(id, userName,currentState);
                     break;
                 case "Оплатить":
+                    logger.info("User [{}] selected 'Оплатить'", id);
                     handlePay(id,currentState);
                     break;
                 case "Инвентарь для питания":
+                    logger.info("User [{}] selected 'Инвентарь для питания'", id);
                     handleFoodInventory(id, currentState);
                     break;
                 case "Задачи":
+                    logger.info("User [{}] selected 'Задачи'", id);
                     handleFoodTasks(id, currentState);
                     break;
                 case "Инвентарь для тренировок":
+                    logger.info("User [{}] selected 'Инвентарь для тренировок'", id);
                     handleTrainingInventory(id, currentState);
                     break;
                 case "Созвон":
+                    logger.info("User [{}] selected 'Созвон'", id);
                     handleCall(id, currentState);
                     break;
                 case "Танцы":
+                    logger.info("User [{}] selected 'Танцы'", id);
                     handleDance(id, currentState);
                     break;
                 case "Назад":
                     if (!adminService.isAdmin(id)) {
+                        logger.info("User [{}] navigated back", id);
                         handleBack(id, userName, currentState);
                         break;
                     }
                 default:
                     if (!adminService.isAdmin(id)) {
+                        logger.warn("User [{}] entered an invalid command", id);
                         sendInvalidCommandMessage(id);
                         break;
                     }
@@ -162,6 +199,7 @@ public class Bot extends TelegramLongPollingBot {
             LocalTime.parse(time, formatter);  // Используем LocalTime вместо LocalDateTime
             return true;
         } catch (Exception e) {
+            logger.error("Time format validation failed for: {}", time, e);
             return false;
         }
     }
@@ -171,7 +209,6 @@ public class Bot extends TelegramLongPollingBot {
     }
     private void handleChangeUserState(Long adminId, String message) {
         // Получаем ID пользователя для смены состояния
-        System.out.println("id: " + message);
         try {
             Long userId = Long.parseLong(message.trim());
             // Запрос на новый статус пользователя
@@ -329,9 +366,10 @@ public class Bot extends TelegramLongPollingBot {
                 keyboardRows.add(row2);
                 break;
             case PAID_USER: //панель для пользователя с состоянием PAID
-                row1.add(new KeyboardButton("Напоминания"));
+                row1.add(new KeyboardButton("Установить напоминание"));
                 row2.add(new KeyboardButton("Отправить тренировку"));
                 row2.add(new KeyboardButton("Отправить фото еды"));
+                row2.add(new KeyboardButton("Удалить напоминание"));
                 keyboardRows.add(row1);
                 keyboardRows.add(row2);
                 break;
@@ -368,6 +406,7 @@ public class Bot extends TelegramLongPollingBot {
         Bot bot = new Bot();
         botsApi.registerBot(bot);
         bot.startReminderScheduler();
+        logger.info("Bot started successfully.");
         UserDatabase.printUserStates(); // Печать данных в консоль
     }
 }

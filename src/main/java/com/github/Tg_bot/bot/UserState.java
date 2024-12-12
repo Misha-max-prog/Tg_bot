@@ -1,4 +1,4 @@
-package bot;
+package com.github.Tg_bot.bot;
 
 public enum UserState {
     ADMIN,

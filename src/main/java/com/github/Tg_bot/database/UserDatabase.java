@@ -1,6 +1,8 @@
-package database;
+package com.github.Tg_bot.database;
 
-import bot.UserState;
+import com.github.Tg_bot.bot.UserState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -11,9 +13,11 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
+
 
 public class UserDatabase {
+
+    private static final Logger logger = LoggerFactory.getLogger(UserDatabase.class);
 
     // Метод для создания таблицы user_states
     public static void createTable() {
@@ -28,9 +32,9 @@ public class UserDatabase {
         try (Connection connection = DatabaseConnection.connect();
              PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.execute();
-            System.out.println("Таблица user_states создана или уже существует.");
+            logger.info("Таблица user_states создана или уже существует.");
         } catch (SQLException e) {
-            System.out.println("Ошибка создания таблицы: " + e.getMessage());
+            logger.error("Ошибка создания таблицы: {}", e.getMessage(), e);
         }
     }
 
@@ -64,7 +68,7 @@ public class UserDatabase {
                 LocalDate now = LocalDate.now();
 
                 long monthsBetween = ChronoUnit.MONTHS.between(lastPaidTime, now);
-                System.out.println("TIME: "+ monthsBetween);
+                logger.info("TIME: {}", monthsBetween);
 
                 if (monthsBetween > 1) {
                     // Если прошло больше месяца, уведомляем пользователя
@@ -72,10 +76,9 @@ public class UserDatabase {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Ошибка при получении состояния пользователя: {}", e.getMessage(), e);
         }
-        System.out.println("ID:" + userId + " | Пользователь: " + userName + " | Состояние: " + state +
-                " | времня напоминания " + reminderTime + " | Последняя оплата: " + lastPaid);
+        logger.info("ID: {} | Пользователь: {} | Состояние: {} | время напоминания: {} | Последняя оплата: {}", userId, userName, state, reminderTime, lastPaid);
         return state;
     }
 
@@ -93,10 +96,9 @@ public class UserDatabase {
             preparedStatement.setString(3, state.name());
             preparedStatement.setString(4, reminderTime);  // Время последнего использования
             int rowsAffected = preparedStatement.executeUpdate();
-            System.out.println("Состояние пользователя " + userId + " обновлено в базе данных. Затронуто строк: " +
-                    rowsAffected + " | Состояние: " + state + " | время напоминания: " + reminderTime);
+            logger.info("Состояние пользователя {} обновлено в базе данных. Затронуто строк: {} | Состояние: {} | время напоминания: {}", userId, rowsAffected, state, reminderTime);
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Ошибка при сохранении состояния пользователя в базе данных: {}", e.getMessage(), e);
         }
     }
 
@@ -118,10 +120,10 @@ public class UserDatabase {
                 String lastPaid = resultSet.getString("last_paid");
 
                 System.out.println("ID: " + userId + ", Имя: " + userName + ", " +
-                        "Состояние: " + state + "время напоминания: " + reminderTime + " Последняя оплата: " + lastPaid);
+                        "Состояние: " + state + " время напоминания: " + reminderTime + " Последняя оплата: " + lastPaid);
             }
         } catch (SQLException e) {
-            System.out.println("Ошибка при получении данных пользователей: " + e.getMessage());
+            logger.error("Ошибка при получении данных пользователей: {}", e.getMessage(), e);
         }
     }
     public static void saveReminderTime(Long userId, String reminderTime) {
@@ -133,8 +135,9 @@ public class UserDatabase {
             preparedStatement.setString(1, reminderTime);  // Сохраняем время напоминания
             preparedStatement.setLong(2, userId);  // Указываем ID пользователя
             preparedStatement.executeUpdate();
+            logger.info("Время напоминания для пользователя с ID {} обновлено на: {}", userId, reminderTime);
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Ошибка при сохранении времени напоминания для пользователя: {}", e.getMessage(), e);
         }
     }
     public static String getReminderTime(Long userId) {
@@ -150,7 +153,7 @@ public class UserDatabase {
                 return resultSet.getString("reminder_time");  // Возвращаем строку с временем напоминания
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Ошибка при получении времени напоминания для пользователя: {}", e.getMessage(), e);
         }
 
         return null;  // Если время не найдено, возвращаем null
@@ -168,7 +171,7 @@ public class UserDatabase {
                 userIds.add(resultSet.getLong("user_id"));  // Добавляем пользователей с установленным временем
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Ошибка при получении пользователей с установленным временем напоминания: {}", e.getMessage(), e);
         }
 
         return userIds;

@@ -1,4 +1,4 @@
-package util;
+package com.github.Tg_bot.util;
 
 import java.io.*;
 import java.util.Scanner;

@@ -1,10 +1,10 @@
-package admin;
+package com.github.Tg_bot.admin;
 
-import bot.Bot;
-import database.DatabaseConnection;
-import bot.MessageType;
-import bot.UserState;
-import database.UserDatabase;
+import com.github.Tg_bot.bot.Bot;
+import com.github.Tg_bot.database.DatabaseConnection;
+import com.github.Tg_bot.bot.MessageType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 
 import java.sql.Connection;
@@ -20,6 +20,7 @@ public class AdminService {
 
     private final Bot bot;
     private final Set<Long> adminIds = Set.of(1716597113L, 5071170827L, 1108817976L); // id админов
+    private static final Logger logger = LoggerFactory.getLogger(AdminService.class);
 
     public AdminService(Bot bot) {
         this.bot = bot;
@@ -57,7 +58,7 @@ public class AdminService {
                             .append("\n");
                 }
             } catch (SQLException e) {
-                e.printStackTrace();
+                logger.error("Ошибка при получении списка пользователей.", e);
                 userList.append("Ошибка при получении списка пользователей.");
             }
             // отправка сообщения
@@ -92,7 +93,7 @@ public class AdminService {
                         .build();
                 bot.executeMessage(sm);
             } catch (SQLException e) {
-                e.printStackTrace();
+                logger.error("Ошибка при обновлении состояния пользователя: userId = {}", userId, e);
                 SendMessage sm = SendMessage.builder()
                         .chatId(adminId.toString())
                         .text("Ошибка при обновлении состояния пользователя.")
